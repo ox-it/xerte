@@ -33,6 +33,7 @@ $xerte_toolkits_site->authentication_method = 'Guest';
 //$xerte_toolkits_site->authentication_method = 'Static';
 //$xerte_toolkits_site->authentication_method = "Moodle";
 
+
 //restrict moodle guest access
 //comment out the following if you want the Moodle guest account to have authoring access
 if ( $xerte_toolkits_site->authentication_method=="Moodle"){
