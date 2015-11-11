@@ -1,0 +1,74 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var xerteModel = new function() {
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function() {
+			
+		}
+		
+		this.init = function() {
+			if (x_currentPageXML.getAttribute("modelFile").toLowerCase().indexOf(".html") >= 0) {
+				// sets up savedData - it can contain the initObject and any additionally saved data for this customHTML file
+				if (x_pageInfo[x_currentPage].savedData == undefined) {
+					x_pageInfo[x_currentPage].savedData = [];
+				}
+				x_pageInfo[x_currentPage].savedData.push(new Object());
+				
+				if (x_currentPageXML.getAttribute("initObject") != undefined && x_currentPageXML.getAttribute("initObject") != "") {
+					x_pageInfo[x_currentPage].savedData[x_pageInfo[x_currentPage].savedData.length - 1].initObject = x_sortInitObject(x_currentPageXML.getAttribute("initObject"));
+				}
+				
+				$("#pageContents").append('<div class="jsHolder"><div class="customHTMLHolder"></div></div>');
+				$("#pageContents .jsHolder").data("savedDataIndex", 0);
+				$("#pageContents .customHTMLHolder").load(x_evalURL(x_currentPageXML.getAttribute("modelFile")));
+				
+			} else {
+				// if language attributes aren't in xml will have to use english fall back
+				var errorTxt = x_currentPageXML.getAttribute("errorTxt");
+				if (errorTxt == undefined) {
+					errorTxt = "You can not view this type of content in the HTML viewer.";
+				}
+				$("#x_pageDiv div").html(errorTxt);
+			}
+			
+			// call this function in every model once everything's loaded
+			x_pageLoaded();
+		}
+	}
+	
+	xerteModel.init();
+	
+</script>
+
+<style type="text/css">
+	
+</style>
+
+<div id="pageContents">
+	
+</div>

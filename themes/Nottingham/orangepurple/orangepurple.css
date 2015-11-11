@@ -1,0 +1,118 @@
+/* change this file to rebrand your version of Xerte Online Toolkits */
+
+body {
+	font-family:	Arial, sans-serif;
+	color:		#7c097d;
+}
+
+#x_mainHolder {
+	border:		1px solid #ffffff;
+	background-color: #fffff0;
+}
+
+#x_headerBlock {
+	color:		#7c097d;
+	background:		#FFFFFF;
+	border-bottom: 1px solid #ffab38;
+	background-color: #fffff0;
+	background-image: none;
+}
+
+#x_footerBlock {
+	font-size:		1em;
+	color:			#FFFFFF;
+	background:		#010101;
+	background-color: #fffff0;
+	border-top: 1px solid #ffab38;
+	background-image: none;
+}
+
+#x_footerBg {
+	background-image: none;
+}
+
+#x_pageNo {
+	background:	#fffff0;
+	color:		#7c097d;
+	font-weight: bold;
+}
+
+h1 {
+	font-size:	1em;
+	margin:		0px;
+}
+
+h2 {
+	font-size:	1.2em;
+	margin:		5px 0px 0px;
+}
+
+h3 {
+	font-size:	1em;
+	margin:		0px;
+}
+
+
+.ui-button .ui-icon.x_help {					background-image: url("help.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_help {		background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_help {		background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_help {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_info {					background-image: url("info.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_info {		background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_info {		background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_info {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_home {					background-image: url("home.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_home {		background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_home {		background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_home {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_glossary {				background-image: url("glossary.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_glossary {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_glossary {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_glossary {background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_maximise {				background-image: url("maximise.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_maximise {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_maximise {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_maximise {background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_minimise {				background-image: url("minimise.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_minimise {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_minimise {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_minimise {background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_media {					background-image: url("media.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_media {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_media {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_media {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_next {					background-image: url("next.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_next {		background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_next {		background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_next {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_prev {					background-image: url("previous.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_prev {		background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_prev {		background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_prev {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_prev_hist {					background-image: url("previous_hist.svg"); background-position: 0px 0px; }
+.ui-button.ui-state-hover .ui-icon.x_prev_hist {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_prev_hist {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_prev_hist {	background-position: -84px 0px; }
+
+.ui-button .ui-icon.x_colourChanger { background-image: url("colour_changer.svg"); background-position: 0px 0px;}
+.ui-button.ui-state-hover .ui-icon.x_colourChanger {	background-position: -42px 0px; }
+.ui-button.ui-state-focus .ui-icon.x_colourChanger {	background-position: -42px 0px; }
+.ui-button.ui-state-active .ui-icon.x_colourChanger {	background-position: -84px 0px; }
+
+
+.ui-dialog .ui-widget-header {
+border: 1px solid #7c097d;
+background: #7c097d;
+background-image: none;
+color: #ffffff;
+font-weight: bold;
+}

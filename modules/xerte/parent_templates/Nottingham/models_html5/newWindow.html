@@ -1,0 +1,105 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var newWindow = new function() {
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function() {
+			
+		}
+		
+		this.init = function() {
+			// descrip is a new field so old projects might not have it
+			var linkTxt = x_currentPageXML.getAttribute("descrip") != undefined ? x_currentPageXML.getAttribute("descrip") : x_currentPageXML.getAttribute("tip");
+			
+			$("#textHolder").html('<p>' + x_addLineBreaks(x_currentPageXML.getAttribute("text")) + '</p><p><a class="newWindowLink" href="#">' + linkTxt + '</a></p>');
+			
+			$("#pageImg")
+				.one("load", function() {
+					var imgMaxW = 500, // desktop / tablet
+						imgMaxH = 400;
+					if (x_browserInfo.mobile == true) {
+						imgMaxW = 250; // mobile
+						imgMaxH = 250;
+					}
+					
+					x_scaleImg(this, imgMaxW, imgMaxH);
+					x_pageLoaded();
+				})
+				.attr({
+					"src": x_evalURL(x_currentPageXML.getAttribute("previewImage")),
+					"alt":	x_currentPageXML.getAttribute("tip")
+				})
+				.each(function() { // called if loaded from cache as in some browsers load won't automatically trigger
+					if (this.complete) {
+						$(this).trigger("load");
+					}
+				});
+			
+			$("#pageContents .newWindowLink").on("click", function() {
+				if (x_currentPageXML.getAttribute("htm") != undefined && x_currentPageXML.getAttribute("htm") != "") {
+					var popupWindow = window.open("", "", "width=" + x_currentPageXML.getAttribute("windowWidth") + ", height=" + x_currentPageXML.getAttribute("windowHeight") + ",scrollbars=1");
+					popupWindow.document.write(x_currentPageXML.getAttribute("htm"));
+					popupWindow.focus();
+				} else {
+					var src = x_currentPageXML.getAttribute("url");
+					window.open(src, "_blank", "width=" + x_currentPageXML.getAttribute("windowWidth") + ", height=" + x_currentPageXML.getAttribute("windowHeight") + ",scrollbars=1");
+				}
+			});
+		}
+	}
+	
+	newWindow.init();
+	
+</script>
+
+<style type="text/css">
+	
+	#pageImg {
+		cursor:	pointer;
+	}
+	
+	#textHolder p:first-child {
+		margin-top:	0px;
+	}
+	
+</style>
+
+<div id="pageContents">
+	
+	<div class="mobileAlign">
+		<div id="imgHolder" class="panel inline x_floatRight">
+			<a class="newWindowLink">
+				<img id="pageImg" style="visibility: hidden" />
+			</a>
+		</div>
+	</div>
+	
+	<div id="textHolder" tabindex="1">
+	
+	</div>
+	
+</div>

@@ -1,0 +1,110 @@
+<?PHP     
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+/**
+* 
+* Update file, code that runs when an editor window closes and the user is given the option of synchronising the files
+*
+* @author Patrick Lockley
+* @version 1.0
+* @package
+*/
+
+require_once('../../../config.php');
+
+_load_language_file("/website_code/php/versioncontrol/update_file.inc");
+
+require('../template_status.php');
+
+database_connect("file update success","file_update_fail");
+
+if(isset($_POST['template_id'])){
+
+	if(is_numeric($_POST['template_id'])){
+
+		if(!empty($_POST['file_path'])){
+
+			$temp_array = explode("-",str_replace($xerte_toolkits_site->users_file_area_full,"",$_POST['file_path']));
+
+			$template_id = $temp_array[0];
+
+		}else{
+		
+			$template_id = (int) $_POST['template_id'];
+		
+		}
+		
+		$query_for_play_content_strip = str_replace("\" . \$xerte_toolkits_site->database_table_prefix . \"", $xerte_toolkits_site->database_table_prefix, $xerte_toolkits_site->play_edit_preview_query);
+
+		$query_for_play_content = str_replace("TEMPLATE_ID_TO_REPLACE", $template_id, $query_for_play_content_strip);
+
+		$row_play = db_query_one($query_for_play_content);
+
+		$temp_array = array();
+
+		array_push($temp_array, (int) $_POST['template_id']);
+
+		array_push($temp_array, $row_play['username']);
+
+		array_push($temp_array, $row_play['template_name']);
+		
+		array_push($temp_array, $row_play['template_framework']);
+
+			/*
+			* Code to sync files
+			*/
+
+		if(is_user_an_editor($template_id,$_SESSION['toolkits_logon_id'])){
+		
+			if(!isset($xerte_toolkits_site->learning_objects->{$temp_array[3] . "_" . $temp_array[2]}->preview_file)){
+				
+				if(file_exists("../../../modules/" . $temp_array[2] . "/publish.php")){
+				
+					require("../../../modules/" . $temp_array[2] . "/publish.php");
+				
+				}else{
+				
+					require("../../../modules/" . $xerte_toolkits_site->learning_objects->{$temp_array[3] . "_" . $temp_array[2]}->requires . "/publish.php");
+				
+				}
+				
+				publish($row_play, $_POST['template_id']);
+				
+				echo UPDATE_SUCCESS;
+			
+			}else{
+		
+				$preview_xml = file_get_contents($xerte_toolkits_site->users_file_area_full . $temp_array[0] . "-" . $temp_array[1] . "-" . $temp_array[2] . "/" . $xerte_toolkits_site->learning_objects->{$temp_array[3] . "_" . $temp_array[2]}->preview_file);
+
+				$data_handle = fopen($xerte_toolkits_site->users_file_area_full . $temp_array[0] . "-" . $temp_array[1] . "-" . $temp_array[2] . "/" . $xerte_toolkits_site->learning_objects->{$temp_array[3] . "_" . $temp_array[2]}->public_file,"w");
+
+				fwrite($data_handle,$preview_xml);
+
+				fclose($data_handle);
+
+				echo UPDATE_SUCCESS;
+			
+			}
+			
+		}
+
+	}
+
+}

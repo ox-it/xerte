@@ -1,0 +1,146 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var bullets = new function() {
+		
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			$(".bullet").hide();
+			if (x_currentPageXML.getAttribute("delaySecs") == "0" || x_currentPageXML.getAttribute("delaySecs") == undefined ) {
+				$(".bullet").fadeIn();
+			} else {
+				$(".bullet:eq(0)").show();
+				bullets.timer();
+			}
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function() {
+			$(".bullet").show();
+			var $pageContents = $("#pageContents");
+			$pageContents.height("");
+			$pageContents.height($pageContents.height());
+		}
+		
+		this.init = function() {
+			var $pageContents = $("#pageContents");
+			
+			if (x_currentPageXML.getAttribute("showPanel") != 0) {
+				$pageContents.addClass("panel");
+			}
+			
+			if (x_browserInfo.mobile == false) {
+				var panelW = x_currentPageXML.getAttribute("panelWidth");
+				if (panelW == "Small") {
+					$pageContents.addClass("width40");
+				} else if (panelW == "Medium") {
+					$pageContents.addClass("width60");
+				} else if (panelW == "Large") {
+					$pageContents.addClass("width80");
+				} // else full width
+			}
+
+            /**
+             * Bullet pages in the Flash editor were separated with <br /> tags
+             * in the HTML editor enclosed in <p></p>
+             */
+
+			var text = x_addLineBreaks(x_currentPageXML.childNodes[0].nodeValue),
+				bulletArray,
+				contentsStr = "",
+				startTag = '<p class="bullet">',
+				endTag = "</p>";
+
+            if (text.indexOf("<p>") >= 0)
+            {
+                // Assume enclosed in <p></P>
+                // First get rid of <p>
+                var textwithout = text.replace(/<p>/g, "");
+                // Then split on </p>
+                bulletArray = textwithout.split("</p>");
+            }
+            else
+            {
+                bulletArray = text.split("<br />")
+            }
+			if (x_currentPageXML.getAttribute("showBullets") != 0) {
+				contentsStr += "<ul>";
+				startTag = '<li class="bullet">';
+				endTag = "</li>";
+			}
+			for (var i=0; i<bulletArray.length; i++) {
+				if (bulletArray[i] != "" && $.trim(bulletArray[i]) != "") {
+					contentsStr += startTag + bulletArray[i] + endTag;
+				}
+			}
+			if (x_currentPageXML.getAttribute("showBullets") != 0) {
+				contentsStr += "</ul>";
+			}
+			$("#holder").append(contentsStr);
+			
+			if (x_currentPageXML.getAttribute("showPanel") != 0) {
+				$pageContents.height($pageContents.height()); // force height otherwise panel shrinks when bullets are hidden
+			}
+			$(".bullet").hide();
+			if (x_currentPageXML.getAttribute("delaySecs") == "0" || x_currentPageXML.getAttribute("delaySecs") == undefined) {
+				$(".bullet").fadeIn();
+			} else {
+				$(".bullet:eq(0)").show();
+				bullets.timer();
+			}
+			
+			// call this function in every model once everything's loaded
+			x_pageLoaded();
+		}
+		
+		this.timer = function() {
+			var currentBullet = 0;
+			clearInterval(x_timer); // cancels timers from other bullets pages that might still be running
+			currentBullet++;
+			x_timer =  setInterval(function() {
+				$(".bullet:eq(" + currentBullet + ")").fadeIn();
+				currentBullet++;
+				if (currentBullet >= $(".bullet").length) {
+					clearInterval(x_timer);
+				}
+			}, x_currentPageXML.getAttribute("delaySecs") * 1000);
+		}
+	}
+	
+	bullets.init();
+	
+</script>
+
+<style type="text/css">
+	
+	li.bullet {
+		padding-bottom:	10px;
+		margin-left:	-10px;
+	}
+	
+</style>
+
+<div id="pageContents">
+	
+	<div id="holder"></div>
+	
+</div>

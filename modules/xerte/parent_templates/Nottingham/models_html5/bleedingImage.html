@@ -1,0 +1,263 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var bleedingImage = new function() {
+		var $pageContents;
+		
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			$pageContents = $("#pageContents");
+			this.loadAudio($("#pageImg").width());
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function(pageChg) {
+			if (x_currentPageXML.getAttribute("imagesize") == "full screen") { // set image size for full screen
+				var addMargin = x_currentPageXML.getAttribute("addmargin");
+				if (addMargin != "true" && x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "") {
+					addMargin = "true";
+				}
+				
+				if (addMargin != "true") {
+					x_scaleImg($("#pageImg"), $x_pageHolder.width(), $x_pageHolder.height(), true, false);
+				} else {
+					var offset = this.calculateOffset(addMargin);
+					x_scaleImg($("#pageImg"), $x_pageHolder.width() - offset[0], $x_pageHolder.height() - offset[1], true, false);
+				}
+				
+				if (x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "") {
+					if ($("#pageAudio .mejs-audio").width() != $("#pageImg").width()) {
+						this.loadAudio();
+					}
+				}
+			}
+			
+			this.setUpMagnifier();
+		}
+		
+		this.init = function() {
+			$pageContents	= $("#pageContents");
+			
+			var	$textHolder	= $("#textHolder"),
+				$panel		= $("#pageContents .panel"),
+				$pageImg	= $("#pageImg"),
+				imageSize	= x_currentPageXML.getAttribute("imagesize"), // auto|full screen
+				addMargin	= x_currentPageXML.getAttribute("addmargin"),
+				imgMaxW,	imgMaxH;
+			
+			// image scaling
+			if (imageSize == "full screen") {
+				if (parseInt($x_pageHolder.css("margin-top")) != 0) {
+					if (addMargin != "true" && (x_currentPageXML.getAttribute("sound") == undefined || x_currentPageXML.getAttribute("sound") == "")) {
+						imgMaxW = $x_pageHolder.width();
+						imgMaxH = $x_pageHolder.height();
+					} else {
+						var offset = this.calculateOffset(addMargin);
+						imgMaxW = $x_pageHolder.width() - offset[0];
+						imgMaxH = $x_pageHolder.height() - offset[1];
+					}
+				}
+				
+				// align
+				$("#imgHolder").addClass("centerAlign");
+				$textHolder.remove();
+				if (addMargin != "true") {
+					var newMargin = 0 - Number(parseInt($panel.css("padding-top")) + 10);
+					$panel.css("margin", newMargin);
+				}
+				
+			} else { // auto
+				imgMaxW = 500; // desktop / tablet
+				imgMaxH = 450;
+				if (x_browserInfo.mobile == true) {
+					imgMaxW = 250; // mobile
+					imgMaxH = 250;
+				}
+				
+				// text align
+				var textAlign = x_currentPageXML.getAttribute("align"); // Left|Right|Top|Bottom
+				if (textAlign == "Top" || textAlign == "Bottom") {
+					if (textAlign == "Top") {
+						$pageContents.prepend($textHolder);
+					} else {
+						$textHolder.css("padding-top", "20px");
+					}
+					$("#imgHolder").addClass("centerAlign");
+					if (addMargin != "true") {
+						// remove margin which indents image away from LO border
+						var newMargin = 0 - Number(parseInt($panel.css("padding-top")) + 10);
+						if (textAlign == "Top") {
+							$panel.css("margin-bottom", newMargin);
+						} else {
+							$panel.css("margin-top", newMargin);
+						}
+						$panel.css({
+							"margin-left"	:newMargin,
+							"margin-right"	:newMargin
+						});
+					}
+				} else {
+					if (textAlign != "Right") { // Left
+						$panel.addClass("x_floatRight");
+					} else {
+						$panel.addClass("x_floatLeft");
+					}
+					if (addMargin != "true") {
+						// remove margin which indents image away from LO border
+						var newMargin = 0 - Number(parseInt($panel.css("padding-top")) + 10);
+						if (textAlign != "Right") {
+							$pageImg.css("margin-right", newMargin);
+						} else {
+							$panel.css("margin-left", newMargin);
+						}
+						$panel.css("margin-top", newMargin);
+					}
+				}
+			}
+			
+			if (x_currentPageXML.getAttribute("link") != undefined && x_currentPageXML.getAttribute("link") != "") {
+				var tooltip = "";
+				if (x_currentPageXML.getAttribute("linkIntro") != undefined) {
+					tooltip = x_currentPageXML.getAttribute("linkIntro");
+				}
+				var target = "_blank";
+				if (x_currentPageXML.getAttribute("linktarget") != undefined) {
+					target = x_currentPageXML.getAttribute("linktarget");
+				}
+				
+				$panel.append('<a href="' + x_currentPageXML.getAttribute("link") + '" target="' + target + '" id="linkImgA" title="' + tooltip + '"><img src="' + x_templateLocation + 'common_html5/linkicon.png" alt="' + tooltip + '" id="linkImg" /></a>');
+			}
+			
+			if (addMargin != "true") {
+				$panel
+					.addClass("noBorder")
+					.removeClass("panel")
+					.removeClass("inline");
+			}
+			
+			if (x_currentPageXML.getAttribute("size") != undefined) {
+				$textHolder.css("font-size", Number(x_currentPageXML.getAttribute("size")) + "pt");
+			}
+			
+			$textHolder.html(x_addLineBreaks(x_currentPageXML.childNodes[0].nodeValue));
+			
+			$pageImg
+				.one("load", function() {
+					x_scaleImg(this, imgMaxW, imgMaxH, true, true);
+					bleedingImage.loadAudio($pageImg.width());
+					bleedingImage.setUpMagnifier();
+					x_pageLoaded(); // call this function in every model once everything's loaded
+				})
+				.attr({
+					"src":	x_evalURL(x_currentPageXML.getAttribute("url")),
+					"alt":	x_currentPageXML.getAttribute("tip")
+				})
+				.each(function() { // called if loaded from cache as in some browsers load won't automatically trigger
+					if (this.complete) {
+						$(this).trigger("load");
+					}
+				});
+		}
+		
+		this.loadAudio = function(width) {
+			var soundFile = x_currentPageXML.getAttribute("sound");
+			if (soundFile != undefined && soundFile != "") {
+				$("#pageAudio").mediaPlayer({
+					type	:"audio",
+					source	:soundFile,
+					width	:width
+				});
+			}
+		}
+		
+		this.calculateOffset = function(addMargin) {
+			// calculates available space when image is full screen
+			var offset = [0, 0];
+			if (addMargin == "true") {
+				offset.splice(0, 1, offset[0] + parseInt($(".panel").css("padding-left")) + 20 * 2);
+				offset.splice(1, 1, offset[1] + parseInt($(".panel").css("padding-top")) + 20 * 2);
+			}
+			if (x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "") {
+				offset.splice(1, 1, offset[1] + x_audioBarH);
+			}
+			return offset;
+		}
+		
+		this.setUpMagnifier = function() {
+			if (x_currentPageXML.getAttribute("magnifier") == "true") {
+				$(".magnifier").remove();
+				$(".magnifiedImg").remove();
+				$("#pageImg").imageLens();
+			}
+		}
+	}
+	
+	bleedingImage.init();
+	
+</script>
+
+<style type="text/css">
+	
+	#textHolder {
+		padding-bottom:	20px;
+	}
+	
+	#textHolder p:first-child {
+		margin-top:	0px;
+	}
+	
+	.noBorder {
+		display:	inline-block;
+		margin:		0px;
+	}
+	
+	#linkImg {
+		padding:	10px;
+		position:	absolute;
+		top:		0;
+		right:		0;
+	}
+	
+	#pageContents a img {
+		border:	2px solid transparent;
+	}
+	
+	#pageContents a:focus img {
+		border-color:	red;
+	}
+	
+</style>
+
+<div id="pageContents">
+	
+	<div id="imgHolder" class="mobileAlign">
+		<div class="panel inline">
+			<img id="pageImg" style="visibility: hidden" />
+			<div id="pageAudio"></div>
+		</div>
+	</div>
+	
+	<div id="textHolder">
+	
+	</div>
+	
+</div>

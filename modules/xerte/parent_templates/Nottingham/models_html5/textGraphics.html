@@ -1,0 +1,293 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var textGraphics = new function() {
+		var $pageContents;
+		
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			$pageContents = $("#pageContents");
+			this.loadAudio();
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function() {
+			var $pageImg = $("#pageImg");
+			
+			if (x_currentPageXML.getAttribute("imagesize") == "full screen") { // set image size for full screen
+				var hidePanel = $pageContents.data("hidePanel");
+				if (hidePanel == "true") {
+					x_scaleImg($pageImg, $x_pageHolder.width() - 20, $x_pageHolder.height() - 20, true, false);
+				} else {
+					var offset = this.calculateOffset();
+					x_scaleImg($pageImg, $x_pageHolder.width() - offset[0], $x_pageHolder.height() - offset[1], true, false);
+				}
+				if ($("#transcriptHolder").length > 0) {
+					$("#transcript").width($pageImg.width());
+				}
+			}
+			
+			if (x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "") {
+				if ($("#pageAudio .mejs-audio").width() != $pageImg.width()) {
+					this.loadAudio();
+				}
+			}
+			
+			textGraphics.setUpMagnifier(); // reload magnifier
+		}
+		
+		this.init = function() {
+			$pageContents = $("#pageContents");
+			
+			var $textHolder	= $("#textHolder"),
+				$panel		= $("#pageContents .panel"),
+				imageSize	= x_currentPageXML.getAttribute("imagesize"),
+				transcriptTxt = x_currentPageXML.getAttribute("transcript"),
+				hidePanel	= x_currentPageXML.getAttribute("hidePanel");
+				
+			if (hidePanel == undefined || (hidePanel == "true" && x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "" && transcriptTxt != undefined && transcriptTxt != "")) {
+				hidePanel = "false";
+			}
+			$pageContents.data("hidePanel", hidePanel);
+			
+			
+			// text align
+			if (imageSize != "full screen") {
+				var textAlign = x_currentPageXML.getAttribute("align"); // Left|Right|Top|Bottom
+				if (textAlign == "Top" || textAlign == "Bottom") {
+					if (textAlign == "Top") {
+						$pageContents.prepend($textHolder);
+					}
+					$("#imgHolder").addClass("centerAlign");
+				} else if (textAlign == "Right") {
+					$panel.addClass("x_floatLeft");
+				} else {
+					$panel.addClass("x_floatRight");
+				}
+			} else {
+				$("#imgHolder").addClass("centerAlign");
+				$textHolder.remove();
+			}
+			
+			
+			// transcript stuff
+			if (x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "" && transcriptTxt != undefined && transcriptTxt != "") {
+				var $transcript = $("#transcript");
+				$transcript
+					.hide()
+					.html(x_addLineBreaks(transcriptTxt));
+				
+				// if language attributes aren't in xml will have to use english fall back
+				var transcriptbuttonlabel = x_currentPageXML.getAttribute("transcriptbuttonlabel");
+				if (transcriptbuttonlabel == undefined) {
+					transcriptbuttonlabel = "Transcript";
+				}
+				
+				$("#transcriptBtn")
+					.button({
+						label: 	transcriptbuttonlabel
+					})
+					.data("up", true)
+					.click(function() {
+						$this = $(this);
+						if ($this.data("up") == true) {
+							$("#transcript").slideDown();
+							$this.data("up", false);
+						} else {
+							$("#transcript").slideUp();
+							$this.data("up", true);
+						}
+					});
+			} else {
+				$("#transcriptHolder").remove();
+			}
+			
+			if (x_currentPageXML.getAttribute("caption") != undefined && x_currentPageXML.getAttribute("caption") != "") {
+				$("#imgCaption").html(x_currentPageXML.getAttribute("caption"));
+			} else {
+				$("#imgCaption").remove();
+			}
+			
+			if (hidePanel == "true") {
+				$panel
+					.addClass("noBorder")
+					.removeClass("panel")
+					.removeClass("inline");
+			}
+			
+			$textHolder.html(x_addLineBreaks(x_currentPageXML.childNodes[0].nodeValue));
+			
+			
+			// image scaling
+			var scale = true,
+				imgMaxW,
+				imgMaxH;
+			
+			if (imageSize == "actual size") {
+				scale = false;
+			} else if (imageSize == "full screen") {
+				if (parseInt($x_pageHolder.css("margin-top")) != 0) {
+					if (hidePanel == "true") {
+						imgMaxW = $x_pageHolder.width() - 20;
+						imgMaxH = $x_pageHolder.height() - 20;
+					} else {
+						var offset = textGraphics.calculateOffset();
+						imgMaxW = $x_pageHolder.width() - offset[0];
+						imgMaxH = $x_pageHolder.height() - offset[1];
+					}
+				}
+			} else { // auto
+				imgMaxW = 500; // desktop / tablet
+				imgMaxH = 400;
+				if (x_browserInfo.mobile == true) {
+					imgMaxW = 250; // mobile
+					imgMaxH = 250;
+				}
+			}
+			
+			$("#pageImg")
+				.one("load", function() {
+					x_scaleImg(this, imgMaxW, imgMaxH, scale, true);
+					textGraphics.imgLoaded();
+				})
+				.attr({
+					"src":	x_evalURL(x_currentPageXML.getAttribute("url")),
+					"alt":	x_currentPageXML.getAttribute("tip"),
+					"title":	x_currentPageXML.getAttribute("tip")
+				})
+				.each(function() { // called if loaded from cache as in some browsers load won't automatically trigger
+					if (this.complete) {
+						$(this).trigger("load");
+					}
+				});
+		}
+		
+		this.imgLoaded = function() {
+			var $pageImg = $("#pageImg");
+			if ($("#transcriptHolder").length > 0) {
+				$("#transcript").width($pageImg.width());
+			}
+			if ($("#imgCaption").length > 0) {
+				$("#imgCaption").width($pageImg.width());
+			}
+			textGraphics.setUpMagnifier();
+			textGraphics.loadAudio();
+			x_pageLoaded(); // call this function in every model once everything's loaded
+		}
+		
+		this.loadAudio = function() {
+			var soundFile = x_currentPageXML.getAttribute("sound");
+			if (soundFile != undefined && soundFile != "") {
+				$("#pageAudio").mediaPlayer({
+					type		:"audio",
+					source		:soundFile,
+					width		:$("#pageImg").width()
+				});
+			}
+		}
+		
+		this.calculateOffset = function() {
+			// calculates available space when image is full screen
+			var offset = [20, 20];
+			if ($pageContents.data("hidePanel") != "true") {
+				var $panel = $(".panel");
+				offset.splice(0, 1, offset[0] + parseInt($panel.css("padding-left")) + 20 * 2);
+				offset.splice(1, 1, offset[1] + parseInt($panel.css("padding-top")) + 20 * 2);
+			}
+			if (x_currentPageXML.getAttribute("sound") != undefined && x_currentPageXML.getAttribute("sound") != "") {
+				offset.splice(1, 1, offset[1] + x_audioBarH);
+				if (x_currentPageXML.getAttribute("transcript") != undefined && x_currentPageXML.getAttribute("transcript") != "") {
+					offset.splice(1, 1, offset[1] + 35);
+				}
+			}
+			return offset;
+		}
+		
+		this.setUpMagnifier = function() {
+			if (x_currentPageXML.getAttribute("magnifier") == "true" && x_browserInfo.touchScreen != true) {
+				$(".magnifier").remove();
+				$(".magnifiedImg").remove();
+				
+				var $pageImg = $("#pageImg");
+				if ($pageImg.data("origSize") != undefined && $pageImg.width() / $pageImg.data("origSize")[0] < 0.8) {
+					// don't magnify if not scaled to less that 80% of original image
+					$pageImg.imageLens();
+				}
+			}
+		}
+	}
+	
+	textGraphics.init();
+	
+</script>
+
+<style type="text/css">
+	
+	#textHolder {
+		padding-bottom:	20px;
+	}
+	
+	.noBorder {
+		display:	inline-block;
+		margin:		0px;
+	}
+	
+	#transcriptHolder {
+		text-align:	right;
+	}
+	
+	#transcript {
+		padding-top:	10px;
+		text-align:		left;
+	}
+	
+	#transcriptBtn {
+		margin-top:	10px;
+	}
+	
+	#imgCaption {
+		padding-top:	5px;
+		font-weight:	bold;
+		text-align:		right;
+	}
+	
+</style>
+
+<div id="pageContents">
+	
+	<div id="imgHolder" class="mobileAlign">
+		<div class="panel inline">
+			<img id="pageImg" style="visibility: hidden" />
+			<div id="pageAudio"></div>
+			<div id="imgCaption"></div>
+			<div id="transcriptHolder">
+				<div id="transcript"></div>
+				<button id="transcriptBtn"></button>
+			</div>
+		</div>
+	</div>
+	
+	<div id="textHolder">
+	
+	</div>
+	
+</div>

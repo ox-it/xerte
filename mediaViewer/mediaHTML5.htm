@@ -1,0 +1,387 @@
+﻿<!DOCTYPE html>
+<!--
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ -->
+<html>
+<head>
+	<link rel="stylesheet" href="../modules/xerte/parent_templates/Nottingham/common_html5/mediaelement/mediaelementplayer.min.css" />
+	<meta name="viewport" id="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=10.0, initial-scale=1.0" />
+	<meta http-equiv="X-UA-Compatible" content="IE=8" />
+	<script type="text/javascript" src="../modules/xerte/parent_templates/Nottingham/common_html5/js/jquery-1.7.1.min.js"></script>
+	<script type="text/javascript" src="../modules/xerte/parent_templates/Nottingham/common_html5/mediaelement/mediaelement-and-player.js"></script>
+	<script type="text/javascript" src="../modules/xerte/parent_templates/Nottingham/common_html5/js/mediaPlayer.js"></script>
+	
+	<style type="text/css">
+		body {
+			margin: 0;
+			font-family: Arial, sans-serif;
+		}
+		
+		#mediaHolder {
+			position:	relative;
+		}
+		
+		#audioImg {
+			vertical-align:	bottom;
+		}
+		
+		#infoHolder {
+			overflow:	auto;
+		}
+		
+		#infoHolder div {
+			cursor:		pointer;
+			padding:	3px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="mediaHolder">
+		<div id="pageMedia"></div>
+	</div>
+	<div id="infoHolder"></div>
+</body>
+
+<script type="text/javascript">
+	var x_volume	= 1,
+		x_audioBarH	= 30,
+		minAudioBarW = 400,
+		x_mediaText = [];
+	
+	var mediaHTML5 = new function() {
+		// get all info needed from url string
+		var str = decodeURI(document.location.search.substr(1,document.location.search.length)),
+			temp = str.split(","),
+			details = {},
+			captionDetails;
+		
+		$(temp).each(function() {
+			var info = this.split("='");
+			details[info[0]] = info[1].substr(0, info[1].length-1);
+		});
+		
+		var mediaFile = details.media,
+			mediaType = mediaFile.indexOf(".mp3") != -1 ? "audio" : "video",
+			transcriptFile = details.transcript,
+			imageFile = details.img,
+			imageTip = details.imgTip,
+			
+			$audioImg,
+			$infoHolder,
+			$pageMedia;
+		
+		for (i=0; i<temp.length; i++) {
+			if (temp[i].substring(0,7) == "caption") {
+				captionDetails = temp[i].split("caption='")[1].split(';');
+				captionDetails.splice(captionDetails.length - 1, 1, captionDetails[captionDetails.length - 1].substr(0, captionDetails[captionDetails.length - 1].length - 1));
+				break;
+			}
+		};
+		
+		var captionInfo = new Array(),
+			captionDetailsArray = {
+				mediaTiming:	"current",
+				mediaPosition:	"below",
+				mediaAlign:		"center",
+				mediaColour:	"#000000",
+				mediaHighlight:	"true",
+				mediaHighlightColour: "#FFFF00"
+			};
+		
+		temp = details.lang.split("~");
+		$(temp).each(function() {
+			var obj = new Object();
+			obj.label = this;
+			x_mediaText.push(obj);
+		});
+		
+		document.title = details.title;
+		
+		this.init = function() {
+			$infoHolder = $("#infoHolder"),
+			$pageMedia = $("#pageMedia");
+			
+			if (mediaType == "audio" && imageFile != "null") {
+				$("#mediaHolder").prepend('<img id="audioImg" style="visibility: hidden"/>');
+				
+				$audioImg = $("#audioImg")
+					.one("load", function() {
+						var $img = $(this),
+							imgW = $img.width(),
+							imgH = $img.height(),
+							maxW = 400, maxH = 400;
+							
+						if (imgW > maxW || imgH > maxH) {
+							if (imgW > maxW) {
+								var scale = maxW / imgW;
+								imgW = imgW * scale;
+								imgH = imgH * scale;
+							}
+							if (imgH > maxH) {
+								var scale = maxH / imgH;
+								imgH = imgH * scale;
+								imgW = imgW * scale;
+							}
+							imgW = Math.round(imgW);
+							imgH = Math.round(imgH);
+							$img.css("width", imgW + "px");
+						}
+						$img.css("visibility", "visible");
+						
+						mediaHTML5.loadTranscript();
+					})
+					.attr("src", "../" + imageFile)
+					.each(function() { // called if loaded from cache as in some browsers load won't automatically trigger
+						if (this.complete) {
+							$(this).trigger("load");
+						}
+					});
+				
+				if (imageTip != "" && imageTip != undefined) {
+					$audioImg.attr("alt", imageTip);
+				}
+			} else {
+				mediaHTML5.loadTranscript();
+			}
+		}
+		
+		this.loadTranscript = function() {
+			//reading XML file
+			if (transcriptFile != "null") {
+				$.ajax({
+					type: "GET",
+					url: "../" + transcriptFile,
+					dataType: "text",
+					success: function(xml) {
+						var $xml = $($.parseXML(xml));
+						
+						// sorts caption attributes - priority is 1. xwd, 2. transcript file, 3. default values above
+						if ($xml.find("caption").attr("timing")) captionDetailsArray.mediaTiming = $xml.find("caption").attr("timing");
+						if ($xml.find("caption").attr("position")) captionDetailsArray.mediaPosition = $xml.find("caption").attr("position");
+						if ($xml.find("styling").attr("textAlign")) captionDetailsArray.mediaAlign = $xml.find("styling").attr("textAlign");
+						if ($xml.find("styling").attr("textColour")) captionDetailsArray.mediaColour = $xml.find("styling").attr("textColour");
+						if ($xml.find("styling").attr("highlight")) captionDetailsArray.mediaHighlight = $xml.find("styling").attr("highlight");
+						if ($xml.find("styling").attr("highlightColour")) captionDetailsArray.mediaHighlightColour = $xml.find("styling").attr("highlightColour");
+						
+						for (i=0; i<captionDetails.length; i++) {
+							var captionDetailsElem = captionDetails[i].split('=');
+							captionDetailsArray[captionDetailsElem[0]] = captionDetailsElem[1];
+						}
+						
+						// adjust some attributes - subtitles can only show one at a time & captions are always below audio without an accompanying image
+						if (mediaType == "audio" && $("#audioImg").length == 0) captionDetailsArray.mediaPosition = "below";
+						if (captionDetailsArray.mediaPosition == "top" || captionDetailsArray.mediaPosition == "bottom") captionDetailsArray.mediaTiming = "current";
+						
+						// make sure colour format is correct
+						if (captionDetailsArray.mediaColour.substr(0,2) == '0x') mediaHTML5.convertColour("mediaColour");
+						if (captionDetailsArray.mediaHighlightColour.substr(0,2) == '0x') mediaHTML5.convertColour("mediaHighlightColour");
+						
+						var xmlData = $xml.find('P');
+						$(xmlData).each(function() {
+							var	$this = $(this);
+							captionInfo.push({text:$this.text(), synch:$this.attr("begin"), end:$this.attr("end")});
+						});
+						mediaHTML5.createCaptions(captionInfo);
+					}
+				});
+				
+			} else {
+				this.loadMedia();
+			}
+		}
+		
+		//setting up the captions
+		this.createCaptions = function() {
+			var captions = new Array();
+			
+			$(captionInfo).each(function() {
+				var	$this = $(this),
+					$caption = $("<div>" + $this.attr("text").replace(/(\n|\r|\r\n)/g, "<br />") + "</div>")
+						.data({
+							"synch"	:	$this.attr("synch"),
+							"end"	:	$this.attr("end")
+						})
+						.css({
+							"visibility":	"hidden",
+							"color"		:	captionDetailsArray.mediaColour,
+							"text-align":	captionDetailsArray.mediaAlign
+						});
+				
+				$infoHolder.append($caption);
+				captions.push($caption[0]);
+			});
+			
+			$(captions)
+				.click(function() {
+					$pageMedia.data("mediaElement").setCurrentTime($(this).data("synch"));
+				});
+			
+			mediaHTML5.loadMedia();
+		}	
+		
+		this.loadMedia = function() {
+			if (mediaType == "audio") $pageMedia.width(minAudioBarW);
+			
+			//setting up player
+			$pageMedia.mediaPlayer({
+				type		:mediaType,
+				source		:window.location.pathname.split('/mediaViewer/')[0] + "/" + mediaFile,
+				pageName	:"mediaHTML5"
+			});
+		}
+		
+		// function called from mediaPlayer.js when media player has been set up
+		this.mediaFunct = function(mediaElement) {
+			$pageMedia.data("mediaElement", mediaElement);
+			
+			mediaElement.addEventListener("canplay", function(e) {
+				// calculate the dimensions of media, div for captions to load in & window size
+				var temp_width, temp_height;
+				
+				if (mediaType == "video") {
+					temp_width = mediaElement.width != undefined ? mediaElement.width : mediaElement.pluginElement.width; // pluginElement is for IE
+					temp_height = mediaElement.height != undefined ? mediaElement.height : mediaElement.pluginElement.height;
+					
+				} else if (mediaType == "audio") {
+					if ($("#audioImg").length > 0) {
+						temp_width = $audioImg.width();
+						temp_height = $audioImg.height();
+					} else {
+						temp_width = minAudioBarW;
+						temp_height = x_audioBarH;
+					}
+				}
+				
+				// are there captions?
+				if ($infoHolder.find("div").length > 0) {
+					$infoHolder.width(temp_width);
+					
+					if (captionDetailsArray.mediaPosition == "right") {
+						$("#mediaHolder, #infoHolder").css({"float":"left"});
+						if (mediaType == "audio") {
+							temp_height += x_audioBarH;
+						}
+						$infoHolder.height(temp_height);
+						temp_width = temp_width * 2;
+						
+					} else if (captionDetailsArray.mediaPosition == "below") {
+						if (mediaType == "audio") {
+							if ($("#audioImg").length == 0) {
+								$infoHolder.height(minAudioBarW);
+								temp_height = minAudioBarW + x_audioBarH;
+								
+							} else {
+								$infoHolder.height(temp_height);
+								temp_height = (temp_height * 2) + x_audioBarH;
+							}
+							
+						} else {
+							$infoHolder.height(temp_height);
+							temp_height = temp_height * 2;
+						}
+						
+					} else { // subtitle captions
+						if (mediaType == "video") {
+							$infoHolder.appendTo($(this).parent());
+							
+						} else {
+							$infoHolder.insertAfter($audioImg);
+							temp_height += x_audioBarH;
+							$infoHolder.css("margin-bottom", x_audioBarH);
+						}
+						
+						if (captionDetailsArray.mediaPosition == "top") $infoHolder.css("top", "0px");
+						if (captionDetailsArray.mediaPosition == "bottom") $infoHolder.css("bottom", "0px");
+						
+						$infoHolder.css({
+							position: "absolute",
+							"max-height": temp_height
+						});
+					}
+					
+				} else if (mediaType == "audio" && $("#audioImg").length > 0) {
+					temp_height += x_audioBarH;
+				}
+				
+				// resize window taking toolbar etc. into account
+				if (window.outerWidth) {
+					window.resizeTo(temp_width + (window.outerWidth - window.innerWidth), temp_height + 20 + (window.outerHeight - window.innerHeight));
+				} else { // IE
+					window.resizeTo(temp_width, temp_height);
+					temp_width = temp_width * 2 - document.body.offsetWidth;
+					temp_height = temp_height * 2 + 100 - document.body.offsetHeight;
+					window.resizeTo(temp_width, temp_height);
+				}
+				
+				$infoHolder.find("div")
+					.each(function(i) {
+						$(this).data("scrollPos", $(this).position().top - $infoHolder.position().top);
+					})
+					.hide()
+					.css("visibility", "visible");
+				
+				redrawCaptions();
+			});
+
+			function redrawCaptions() {
+				var currentTime = mediaElement.currentTime;
+				
+				$infoHolder.find("div").each(function(i) {
+					var $thisCaption = $(this);
+					var this_show = false;
+					if (currentTime > $thisCaption.data("synch") || captionDetailsArray.mediaTiming == "all") this_show = true;
+					if (currentTime > $thisCaption.data("end") && captionDetailsArray.mediaTiming == "current") this_show = false;
+					if (this_show) {
+						$thisCaption.show();
+					} else {
+						$thisCaption.hide();
+					}
+					
+					if (currentTime > $thisCaption.data("synch") && currentTime < $thisCaption.data("end") && captionDetailsArray.mediaHighlight == 'true') {
+						if ($thisCaption.data("highlight") != true) {
+							if ($infoHolder.scrollTop() < $thisCaption.data("scrollPos") - $infoHolder.height() + $thisCaption.height() + 6 || $infoHolder.scrollTop() > $thisCaption.data("scrollPos") + $thisCaption.height() + 6) {
+								$infoHolder.scrollTop($thisCaption.data("scrollPos") - $infoHolder.height() + $thisCaption.height() + 6);
+							}
+							$thisCaption
+								.css("background-color", captionDetailsArray.mediaHighlightColour)
+								.data("highlight", true);
+						}
+					} else {
+						$thisCaption
+							.css("background-color", "")
+							.data("highlight", false);
+					}
+				});
+			}
+			
+			mediaElement.addEventListener("timeupdate", redrawCaptions, false);
+		}
+		
+		this.convertColour = function(attr) {
+			//captionDetailsArray[attr] = "rgba(" + parseInt(captionDetailsArray[attr].substr(2,2),16) + "," + parseInt(captionDetailsArray[attr].substr(4,2),16) + "," + parseInt(captionDetailsArray[attr].substr(6,2),16) + ",1.0)";
+			captionDetailsArray[attr] = "#" + captionDetailsArray[attr].substr(2,captionDetailsArray[attr].length);
+		}
+	}
+	
+	mediaHTML5.init();
+
+	</script>
+</html>

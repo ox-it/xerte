@@ -1,0 +1,210 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var transcriptReader = new function() {
+		var $pageContents,
+			$infoHolder;
+		
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			$pageContents	= $("#pageContents");
+			$infoHolder		= $("#infoHolder");
+			
+			$infoHolder.scrollTop(0);
+			$infoHolder.find(".highlight").removeClass("highlight");
+			this.loadAudio();
+		}
+		
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function(pageChg) {
+			if (x_browserInfo.mobile == false) {
+				var $panel = $("#pageContents .panel");
+				$panel.height($x_pageHolder.height() - parseInt($x_pageDiv.css("padding-top")) * 2 - parseInt($panel.css("padding-top")) * 2 - 5);
+				$infoHolder.height($panel.height() - x_audioBarH);
+			}
+			
+			$infoHolder.scrollTop(0);
+			$infoHolder.find("div").each(function() {
+				var $caption = $(this);
+				$caption.data("scrollPos", $caption.position().top);
+			});
+			this.loadAudio();
+		}
+		
+		this.init = function() {
+			$pageContents = $("#pageContents");
+			$infoHolder = $("#infoHolder");
+			
+			var captionInfo = new Array(),
+				panelWidth = x_currentPageXML.getAttribute("panelWidth");
+			
+			if (panelWidth == "Full") {
+				$("#pageContents .panel").appendTo($pageContents);
+				$("#pageContents .splitScreen").remove();
+			} else {
+				$("#textHolder").html(x_addLineBreaks(x_currentPageXML.getAttribute("text")));
+				if (panelWidth == "Small") {
+					$("#pageContents .splitScreen").addClass("large"); // make text area on left large so panel on right is small
+				} else if (panelWidth == "Large") {
+					$("#pageContents .splitScreen").addClass("small");
+				} else {
+					$("#pageContents .splitScreen").addClass("medium");
+				} 
+			}
+			
+			// uses data from timedText file if there is one - otherwise use nested page info
+			if (x_currentPageXML.getAttribute("timedText") != "" && x_currentPageXML.getAttribute("timedText") != undefined) {
+				$.ajax({
+					type: "GET",
+					url: x_evalURL(x_currentPageXML.getAttribute("timedText")),
+					dataType: "xml",
+					success: function(xml) {
+						$(xml).find("P, p").each(function() {
+							var	$this = $(this);
+							captionInfo.push({text:$this.text(), synch:$this.attr("begin"), end:$this.attr("end")});
+						});
+						
+						transcriptReader.createCaptions(captionInfo);
+					},
+					
+					error: function () {
+						// see if there are any captions in xml to use instead
+						$(x_currentPageXML).children().each(function() {
+							var	$this = $(this);
+							captionInfo.push({text:$this.attr("text"), synch:$this.attr("synch")});
+						});
+						
+						transcriptReader.createCaptions(captionInfo);
+					}
+				});
+				
+			} else {
+				var synchPoint = 0;
+				$(x_currentPageXML).children().each(function() {
+					var	$this = $(this);
+					synchPoint = $this.attr("synch")[0] == "+" ? ($.isNumeric($this.attr("synch").slice(1)) ? Number($this.attr("synch").slice(1)) + synchPoint : 0) : Number($this.attr("synch")),
+					captionInfo.push({text:$this.attr("text"), synch:synchPoint});
+				});
+				
+				transcriptReader.createCaptions(captionInfo);
+			}
+		}
+		
+		this.createCaptions = function(captionInfo) {
+			var	captions = new Array();
+			
+			$(captionInfo).each(function() {
+				var	$this = $(this);
+				
+				var $caption = $("<div>" + x_addLineBreaks($this.attr("text")) + "</div>")
+					.data("synch", $this.attr("synch"));
+				
+				$infoHolder.append($caption);
+				captions.push($caption[0]);
+			});
+			
+			$pageContents.data("captions", captions);
+			
+			$(captions).click(function() {
+				$infoHolder.find(".highlight").removeClass("highlight");
+				
+				var $this = $(this);
+				$this.addClass("highlight");
+				$infoHolder.scrollTop($this.data("scrollPos") - parseInt($("#pageContents .panel").css("padding-top")) - 1);
+				$pageContents.data("mediaElement").setCurrentTime($this.data("synch"));
+			});
+			
+			setTimeout(function() { // audio won't load properly without a delay here
+				transcriptReader.sizeChanged();
+			}, 1);
+		}
+		
+		this.loadAudio = function() {
+			var soundFile = x_currentPageXML.getAttribute("sound");
+			$("#pageAudio").mediaPlayer({
+				type		:"audio",
+				source		:soundFile,
+				pageName	:"transcriptReader"
+			});
+			if ($pageContents.data("loaded") != true) {
+				$pageContents.data("loaded", true);
+				x_pageLoaded(); // call this function in every model once everything's loaded
+			}
+		}
+		
+		// function called from mediaPlayer.js when audio player has been set up
+		this.mediaFunct = function(mediaElement) {
+			var $captions = $($pageContents.data("captions"));
+			
+			$pageContents.data("mediaElement", mediaElement);
+			
+			mediaElement.addEventListener("timeupdate", function(e) {
+				var currentTime = mediaElement.currentTime;
+				$captions.each(function(){
+					var $thisCaption = $(this);
+					if (currentTime > $thisCaption.data("synch")) {
+						$("#infoHolder .highlight").removeClass("highlight");
+						$thisCaption.addClass("highlight");
+						$infoHolder.scrollTop($thisCaption.data("scrollPos") - parseInt($("#pageContents .panel").css("padding-top")) - 1);
+					} else {
+						$thisCaption.removeClass("highlight");
+					}
+				});
+			});
+		}
+	}
+	
+	transcriptReader.init();
+	
+</script>
+
+<style type="text/css">
+	
+	#infoHolder {
+		overflow:	auto;
+	}
+	
+	#infoHolder div {
+		padding:		10px;
+	}
+	
+</style>
+
+<div id="pageContents">
+	
+	<div class="splitScreen">
+		
+		<div id="textHolder" class="left" tabindex="1">
+			
+		</div>
+		
+		<div class="right">
+			<div class="panel">
+				<div id="infoHolder">
+				</div>
+				<div id="pageAudio"></div>
+			</div>
+		</div>
+		
+	</div>
+	
+</div>

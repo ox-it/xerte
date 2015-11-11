@@ -1,0 +1,79 @@
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+.properties_main {
+	font-size:75%;
+}
+
+div#dynamic_area form{
+	padding-left:10px;
+}
+
+div#dynamic_area div#dynamic_area_folder{
+	padding-left:5px; 
+	float:left; 
+	position:relative; 
+	width:100%
+}
+
+div#dynamic_area div#dynamic_area_folder p{
+	margin:2px; 
+	padding:4px;
+}
+
+div#dynamic_area div#dynamic_area_folder p img{
+	vertical-align:middle; 
+	padding-right:5px;
+}
+
+div#dynamic_area div#dynamic_area_folder_content{
+	padding-left:20px; 
+	float:left; 
+	position:relative; 
+	width:100%; 
+	margin:0px;
+}
+
+div#dynamic_area .dynamic_area_file{
+	padding-left:5px; 
+	float:left; 
+	position:relative; 
+	width:100%
+}
+
+div#dynamic_area .dynamic_area_file p{
+ 	margin:2px; 
+	padding:4px;
+}
+
+div#dynamic_area .dynamic_area_file p img{
+	vertical-align:middle; 
+	padding-right:5px;
+}
+
+.mini_folder_content{
+
+	margin-left:10px; 
+	width:80%; 
+	height:90%;
+	overflow:scroll; 
+	border:1px solid #eee; 
+	float:left; 
+	position:relative;
+
+}

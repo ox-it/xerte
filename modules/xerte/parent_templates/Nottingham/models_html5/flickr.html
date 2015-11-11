@@ -1,0 +1,407 @@
+<script type="text/javascript">
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+
+ * The Apereo Foundation licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+	
+	// pageChanged & sizeChanged functions are needed in every model file
+	// other functions for model should also be in here to avoid conflicts
+	var flickr = new function() {
+		var $pageContents,
+			$panel,
+			maxImageWidth,
+			maxImageHeight;
+
+		// function called every time the page is viewed after it has initially loaded
+		this.pageChanged = function() {
+			this.$pageContents = $("#pageContents");
+			this.$panel = $("#pageContents .panel");
+			
+			this.setMaxSizes();
+		};
+
+		// function called every time the size of the LO is changed
+		this.sizeChanged = function() {
+			var currentImg = $("#pictureHolder img");
+			currentImg
+				.width("0px")
+				.height("0px");
+			
+			this.setPanelSize();
+			this.setMaxSizes();
+			
+			x_scaleImg(currentImg[0], this.maxImageWidth, this.maxImageHeight, true, false, true);
+		};
+		
+		this.setPanelSize = function(firstLoad) {
+			this.$panel.height($x_pageHolder.height() - parseInt($x_pageDiv.css("padding-top")) * 2 - parseInt(this.$panel.css("padding-top")) * 2 - 5);
+			
+			var $btnHolder = $("#btnHolder");
+			$("#flickrHolder").height(this.$panel.height() - $btnHolder.height() - parseInt($btnHolder.css("margin-top")));
+			
+			if (firstLoad == 1) {
+				$btnHolder.hide();
+			}
+		}
+		
+		this.setMaxSizes = function() {
+			this.maxImageWidth = $("#flickrHolder").width();
+			this.maxImageHeight = $("#flickrHolder").height() - $("#headerHolder").height() - $("#licenseHolder").height() - 10;
+		}
+		
+		
+		this.init = function() {
+			this.$pageContents = $("#pageContents");
+			this.$panel = $("#pageContents .panel");
+
+			x_pageInfo[x_currentPage].savedData = {
+				pictureFeed  : undefined,
+				pictureInfo  : undefined,
+				pictureStore : [],
+				pictureIndex : 0
+			};
+			
+			
+			var prevBtnTxt = x_currentPageXML.getAttribute("prevTipTxt");
+			if (prevBtnTxt == undefined) {
+				prevBtnTxt = "Previous Image";
+			}
+			
+			var nextBtnTxt = x_currentPageXML.getAttribute("nextTipTxt");
+			if (nextBtnTxt == undefined) {
+				nextBtnTxt = "Next Image";
+			}
+			
+			$("#prevBtn")
+				.button({
+					icons: {
+						primary: "ui-icon-carat-1-w"
+					},
+					label:	prevBtnTxt,
+					text:	false
+				})
+				.click(function() {
+					flickr.proceed(Math.max(0, x_pageInfo[x_currentPage].savedData.pictureIndex-1));
+				});
+			
+			$("#nextBtn")
+				.button({
+					icons: {
+						primary: "ui-icon-carat-1-e"
+					},
+					label:	nextBtnTxt,
+					text:	false
+				})
+				.click(function() {
+					flickr.proceed(Math.min(x_pageInfo[x_currentPage].savedData.pictureIndex+1, x_pageInfo[x_currentPage].savedData.pictureFeed.length-1));
+				});
+			
+			
+			$("#textHolder").html(x_addLineBreaks($(x_currentPageXML).text()));
+			$("#loadingSpinner p").html(x_getLangInfo(x_languageData.find("fetchResults")[0], "label", "Fetching results..."));
+
+			this.setPanelSize(1);
+			this.setMaxSizes();
+			this.callAjax();
+			
+			
+			// call this function in every model once everything is loaded
+			x_pageLoaded();
+		}
+		
+		this.callAjax = function() {
+			var keywords = x_currentPageXML.getAttribute("keywords");
+			var content = x_currentPageXML.getAttribute("content");
+			var deriv = x_currentPageXML.getAttribute("deriv");
+
+			var license;
+			if (content == 'all use'){
+				if (deriv == 'unrestricted') {
+					license = '1,2,3,4,5,6';
+				}
+				else if (deriv == 'non-derivative') {
+					license = '3,6';
+				}
+				else if (deriv == 'share alike') {
+					license = '1,5';
+				}
+			}
+			else if (content == 'non-commercial use') {
+				if (deriv == 'unrestricted') {
+					license = '2';
+				}
+				else if (deriv == 'non-derivative') {
+					license = '3';
+				}
+				else if (deriv == 'share alike') {
+					license = '5';
+				}
+			}
+			else {
+				license = '1,2,3,4,5,6';
+			}
+
+			var feedURL = "https://api.flickr.com/services/rest/";
+			feedURL += "?method=flickr.photos.search";
+			feedURL += "&text=" + keywords;
+			feedURL += "&api_key=8f6f38d31f048a90c436583a6ac92e47";
+			feedURL += "&per_page=500";
+			feedURL += "&format=json";
+			feedURL += "&jsoncallback=flickr.feedLoaded";
+			feedURL += "&lang=en-us";
+			feedURL += "&safe_search=1";
+			feedURL += "&license=" + license;
+
+			$.ajax({
+				beforeSend: function() {
+					$("#loadingSpinner").show();
+					x_timer = setTimeout(function() {
+					 	$('#headerHolder').html('<div><p>' + x_getLangInfo(x_languageData.find("noResults")[0], "label", "No results returned") + '</p></div>');
+					 	clearTimeout(x_timer);
+					 	$("#loadingSpinner").remove();
+					}, 20000);
+				},
+				dataType: 'jsonp',
+				url: feedURL,
+				cache: false
+			});
+		};
+
+		this.feedLoaded = function(data) {
+			if (data.stat == "ok") {
+				clearTimeout(x_timer);
+				x_pageInfo[x_currentPage].savedData.pictureFeed = data.photos.photo;
+				x_pageInfo[x_currentPage].savedData.pictureIndex = 0;
+				this.getPictureInfo();
+			}
+			else {
+				$('#headerHolder').html('<div><p>' + x_getLangInfo(x_languageData.find("noResults")[0], "label", "No results returned") + '</p></div>');
+			}
+		};
+
+		this.getPictureInfo = function () {
+			var data = x_pageInfo[x_currentPage].savedData.pictureStore[x_pageInfo[x_currentPage].savedData.pictureIndex];
+			if (data != undefined) {
+				this.displayPicture(
+					data.source,
+					data.info,
+					data.size
+				);
+			}
+			else {
+				var url = "https://api.flickr.com/services/rest/";
+				url += "?api_key=8f6f38d31f048a90c436583a6ac92e47";
+				url += "&method=flickr.photos.getInfo";
+				url += "&format=json";
+				url += "&jsoncallback=flickr.getPictureSizes";
+				url += "&photo_id=" + x_pageInfo[x_currentPage].savedData.pictureFeed[x_pageInfo[x_currentPage].savedData.pictureIndex].id;
+
+				$.ajax({
+					url: url,
+					dataType: 'jsonp',
+					cache: false
+				});
+			}
+		};
+
+		this.getPictureSizes = function (data) {
+			var ccLicenses = [
+				{desc: 'Creative Commons Attribution-NonCommercial-ShareAlike License', url:'http://creativecommons.org/licenses/by-nc-sa/2.0/'},
+				{desc: 'Creative Commons Attribution-NonCommercial License', url:'http://creativecommons.org/licenses/by-nc/2.0/'},
+				{desc: 'Creative Commons Attribution-NonCommercial-NoDerivs License', url:'http://creativecommons.org/licenses/by-nc-nd/2.0/'},
+				{desc: 'Creative Commons Attribution License', url:'http://creativecommons.org/licenses/by/2.0/'},
+				{desc: 'Creative Commons Attribution-ShareAlike License', url:'http://creativecommons.org/licenses/by-sa/2.0/'},
+				{desc: 'Creative Commons Attribution-NoDerivs License', url:'http://creativecommons.org/licenses/by-nd/2.0/'},
+				{desc: 'No known copyright restrictions', url:'http://flickr.com/commons/usage/'}
+			];
+
+			var ccInfo = data.photo.title._content;
+			ccInfo += ' © ' + data.photo.owner.realname + ', ' + data.photo.dates.taken.split('-')[0] + '<br />';
+			ccInfo += '<a href="' + ccLicenses[data.photo.license-1].url;
+			ccInfo += '" target="_blank">' + ccLicenses[data.photo.license-1].desc + '</a>';
+			x_pageInfo[x_currentPage].savedData.pictureInfo = ccInfo;
+
+			var url =  "https://api.flickr.com/services/rest/";
+			url += "?api_key=8f6f38d31f048a90c436583a6ac92e47";
+			url += "&method=flickr.photos.getSizes";
+			url += "&format=json";
+			url += "&jsoncallback=flickr.findPicture";
+			url += "&photo_id=" + x_pageInfo[x_currentPage].savedData.pictureFeed[x_pageInfo[x_currentPage].savedData.pictureIndex].id;
+
+			$.ajax({
+				url: url,
+				dataType: 'jsonp',
+				cache: false
+			});
+		};
+
+		this.findPicture = function (data) {
+			// loop through the size array to find either the first picture that is large enough or the largest available
+			var size = {width:0, height:0};
+			var sizeIndex = -1;
+
+			for (var i=0; i<data.sizes.size.length; i++) {
+				if (parseInt(data.sizes.size[i].width) >= flickr.maxImageWidth && parseInt(data.sizes.size[i].height) >= flickr.maxImageHeight) {
+					sizeIndex = i;
+					size = {width: parseInt(data.sizes.size[i].width), height: parseInt(data.sizes.size[i].height)};
+					break;  // we have a picture big enough
+				}
+				else if (data.sizes.size[i].width >= size.width && data.sizes.size[i].height >= size.height) {
+					// we have a new largest picture
+					sizeIndex = i;
+					size = {width: parseInt(data.sizes.size[i].width), height: parseInt(data.sizes.size[i].height)};
+				}
+			}
+
+			this.displayPicture(data.sizes.size[sizeIndex].url, data.sizes.size[sizeIndex].source, x_pageInfo[x_currentPage].savedData.pictureInfo, size);
+
+			// Store picture details in store so we don't need to do the work again
+			x_pageInfo[x_currentPage].savedData.pictureStore[x_pageInfo[x_currentPage].savedData.pictureIndex] = {
+				'source': data.sizes.size[sizeIndex].source,
+				'info': x_pageInfo[x_currentPage].savedData.pictureInfo,
+				'size': size,
+				'status': 'loaded'
+			};
+		};
+
+        this.displayPicture = function(url, source, info, size) {
+			var imageTxt = x_currentPageXML.getAttribute("imageTxt");
+			if (imageTxt == undefined) {
+				imageTxt = "Image {i} of {n} images";
+			}
+            imageTxt = imageTxt.replace("{i}", x_pageInfo[x_currentPage].savedData.pictureIndex + 1);
+            imageTxt = imageTxt.replace("{n}", x_pageInfo[x_currentPage].savedData.pictureFeed.length);
+            $("#headerHolder").html(imageTxt);
+            $("#licenseHolder").html(info);
+			$("#btnHolder").show();
+            
+			this.setMaxSizes();
+			
+            $("<img />")
+				.on("load", function() {
+					var $img = $(this);
+					$("#pictureHolder").html(
+						$("<a>")
+							.attr("href", url)
+							.attr("target", "_blank")
+					);
+					$("#pictureHolder a").append($(this));
+
+					x_scaleImg(this, flickr.maxImageWidth, flickr.maxImageHeight, true, true, true);
+					$("#loadingSpinner").remove();
+				})
+				.attr("src", source);
+        };
+
+		this.proceed = function(newValue) {
+			if (newValue != x_pageInfo[x_currentPage].savedData.pictureIndex) {
+				$('#headerHolder').html(x_getLangInfo(x_languageData.find("loading")[0], "label", "Loading..."));
+				x_pageInfo[x_currentPage].savedData.pictureIndex = newValue;
+				this.getPictureInfo();
+			}
+		};
+	};
+
+	flickr.init();
+
+</script>
+
+<style type="text/css">
+	
+	#pageContents .right .panel {
+		overflow:	hidden;
+	}
+	
+	#flickrHolder {
+		width:		100%;
+	}
+
+	#headerHolder {
+		text-align: 	left;
+		margin-bottom: 	10px;
+	}
+	
+	#licenseHolder {
+		margin-top: 	10px;
+	}
+
+	#pictureHolder {
+		width:		100%;
+		text-align: center;
+	}
+
+	#pictureHolder img {
+		margin-left: 	auto;
+  		margin-right: 	auto;
+	}
+
+	#loadingSpinner {
+		margin-left: 	auto;
+  		margin-right: 	auto;
+		width:			180px;
+	}
+
+	.spinner {
+		float:	left;
+		margin:	-8px 20px 0 0;
+	}
+
+	#loadingSpinner p {
+		font-weight:	bold;
+	}
+
+	#btnHolder {
+		text-align:		right;
+		margin-top:		10px;
+		margin-right:	0px; /* over-ride ui style */
+	}
+
+</style>
+
+<div id="pageContents">
+	
+	<div class="splitScreen medium">
+		
+		<div id="textHolder" class="left" tabindex="1">
+			
+		</div>
+		
+		<div class="right">
+			<div class="panel">
+				
+				<div id="flickrHolder">
+					<div id="container">
+						<div id="headerHolder">
+						</div>
+						<div id="pictureHolder">
+							<div id="loadingSpinner"><div class="spinner"></div><p></p></div>
+						</div>
+						<div id="licenseHolder"></div>
+					</div>
+				</div>
+				
+				<div id="btnHolder">
+					<button id="prevBtn"></button>
+					<button id="nextBtn"></button>
+				</div>
+				
+			</div>
+		</div>
+		
+	</div>
+
+</div>
