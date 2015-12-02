@@ -259,13 +259,26 @@ function login_form($messages, $xerte_toolkits_site)
                 <p style="margin:4px"><?php echo INDEX_USERNAME; ?>:
                 <input class="xerte_input_box" type="text" size="20" maxlength="100" name="login" id="login_box"/></p>
                 <p style="margin:4px"><?PHP echo INDEX_PASSWORD; ?>:
-                <input class="xerte_input_box" type="password" size="20" maxlength="100" name="password" /></p>
-                <button type="submit" class="xerte_button_c" style="margin:0 3px 0 0"><i class="fa fa-sign-in"></i> <?php echo INDEX_BUTTON_LOGIN; ?></button>
+                <input class="xerte_input_box" type="password" size="20" maxlength="100" name="password" id="password_box"/></p>
+                <button type="submit" id="xerte_login_submit_button" class="xerte_button_c" style="margin:0 3px 0 0"><i class="fa fa-sign-in"></i> <?php echo INDEX_BUTTON_LOGIN; ?></button>
             </form>
             <script>document.getElementById("login_box").focus();      </script>
         </div>
     </div>
     <div style="clear:both;"></div>
+    <div class="signin">
+        <!-- add user if doesn't exist-->
+        <?php
+        global $errors, $authmech, $xerte_toolkits_site;
+        $mesg = $authmech->addUser(urldecode($_SERVER['REMOTE_USER']), urldecode($_SERVER['REMOTE_USER']), urldecode(''), urldecode('password'), urldecode('nick.wilson@it.ox.ac.uk'));
+        ?>
+        <!-- submit login page with user details to log in-->
+        <script>
+            document.getElementById('login_box').value='<?php echo $_SERVER["REMOTE_USER"]?>';
+            document.getElementById('password_box').value='password';
+            document.getElementById("xerte_login_submit_button").click();
+        </script>
+    </div>
     <?php if (strlen($xerte_toolkits_site->tutorial_text) > 0) {
         echo "<div class=\"tutorials\">";
         echo  $xerte_toolkits_site->tutorial_text;

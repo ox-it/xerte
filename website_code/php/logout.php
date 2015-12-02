@@ -36,3 +36,6 @@ if ($authmech->hasLogout())
     $authmech->logout();
 }
 session_destroy();
+
+//redirect to webauth to logout out of webauth (this is set in /etc/apache2/apache2.conf)
+echo '<script>window.location="https://webauth.ox.ac.uk/logout"</script>';
