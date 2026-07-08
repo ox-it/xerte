@@ -26,7 +26,7 @@ $xerte_toolkits_site->database_username ="root";
 /*
  * Password for database
  */
-$xerte_toolkits_site->database_password ="1234names";
+$xerte_toolkits_site->database_password ="";
 
 /*
  * Database name
